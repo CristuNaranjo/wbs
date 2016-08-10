@@ -5,9 +5,7 @@ import org.apache.spark.api.java.JavaDoubleRDD;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.Function;
-import org.apache.spark.api.java.function.MapFunction;
-import org.apache.spark.api.java.function.PairFunction;
+import org.apache.spark.api.java.function.*;
 import org.apache.spark.ml.linalg.Vector;
 import org.apache.spark.mllib.linalg.Vectors;
 import org.apache.spark.mllib.regression.IsotonicRegression;
@@ -19,6 +17,7 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import scala.Tuple2;
 import scala.Tuple3;
+import scala.collection.immutable.Map;
 
 /**
  * Created by cristu on 9/08/16.
@@ -39,8 +38,44 @@ public class Grouping {
 
         Dataset<Row> df = spark.read().json("/home/cristu/Proyectos/BigData/src/main/resources/social_reviews.json");
         Dataset<Row> dfrows = df.select("id", "positive", "user_id");
-//        dfrows.toJavaRDD().take(30).forEach(System.out::println);
-        JavaRDD<Row> posrdd = dfrows.toJavaRDD();
+        JavaRDD<Row> dfrdd = dfrows.toJavaRDD();
+        //        dfrows.toJavaRDD().take(30).forEach(System.out::println);
+        JavaPairRDD<Integer, Tuple2<Double,Double>> pairrdd = dfrdd.mapToPair(new PairFunction<Row, Integer, Tuple2<Double, Double>>()
+                                                    {
+                                                        @Override
+                                                        public Tuple2<Integer, Tuple2<Double, Double>> call(Row row) throws Exception {
+                                                            if (row.isNullAt(0) || row.isNullAt(1)) {
+                                                                return new Tuple2<>(0, new Tuple2<>(0.0, 0.0));
+                                                            } else {
+                                                                return new Tuple2<>(new Integer(row.getString(2)), new Tuple2<>(new Double(row.getString(1)), new Double(row.getString(0))));
+                                                            }
+                                                        }
+                                                    });
+        pairrdd.take(10).forEach(System.out::println);
+
+        JavaPairRDD<Integer, Iterable<Tuple2<Double, Double>>> data = pairrdd.groupByKey();
+
+        data.take(2).forEach(System.out::println);
+
+
+
+//        Dataset<Row> dfrowsasc = dfrows.orderBy(dfrows.col("user_id").asc()).map(new MapFunction<Row, Row>() {
+//            @Override
+//            public Row call(Row row) throws Exception {
+//
+//            }
+//        });
+//
+//        RelationalGroupedDataset testdata = dfrowsasc.groupBy(dfrowsasc.col("user_id"));
+//        testdata
+//
+//
+//        Dataset<Row> dfrowsfilter = dfrows.filter(new FilterFunction<Row>() {
+//            @Override
+//            public boolean call(Row row) throws Exception {
+//                return null;
+//            }
+//        });
 
 //        JavaRDD<LabeledPoint> parsedData = data.map(
 //                new Function<String, LabeledPoint>() {
@@ -65,9 +100,6 @@ public class Grouping {
 //                return null;
 //            }
 //        })
-
-
-
 
 
 //        JavaPairRDD< Integer, Vectors> rddgrouped = posrdd.mapToPair(new PairFunction<Row, Integer, Vectors>() {
@@ -106,9 +138,6 @@ public class Grouping {
 //                });
 //         JavaPairRDD<Tuple2<Integer, > testData =
 //        olaqase.toJavaRDD().take(30).forEach(System.out::println);
-
-
-
 
 
 //        parsedData.take(30).forEach(System.out::println);

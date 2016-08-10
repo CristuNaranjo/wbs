@@ -33,7 +33,7 @@ public class Test {
         Dataset<Row> training = spark.read().format("libsvm")
                 .load("/home/cristu/Proyectos/BigData/src/main/resources/data.txt");
 
-        training.show();
+        training.toJavaRDD().take(20).forEach(System.out::println);
 //        LinearRegression lr = new LinearRegression()
 //                .setMaxIter(10)
 //                .setRegParam(0.3)
