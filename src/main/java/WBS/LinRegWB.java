@@ -5,6 +5,7 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FilterFunction;
+import org.apache.spark.api.java.function.ForeachFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.ml.feature.LabeledPoint;
@@ -16,9 +17,15 @@ import org.apache.spark.ml.regression.GeneralizedLinearRegressionTrainingSummary
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.util.LongAccumulator;
+import scala.Function1;
 import scala.Tuple2;
 
 import java.util.Arrays;
+import java.util.List;
+
+import org.math.plot.*;
+import javax.swing.*;
 
 /**
  * Created by cristu on 12/08/16.
@@ -47,14 +54,21 @@ public class LinRegWB {
                 .filter(new FilterFunction<Row>() {
                     @Override
                     public boolean call(Row row) throws Exception {
-                        return !row.isNullAt(0) || row.getString(2)=="36";
+                        Double x = 0.0;
+                        if(!row.isNullAt(0)){
+                            x = new Double (row.getString(2));
+                        }
+                        return !row.isNullAt(0) && x==44.0;
                     }
                 });
-
+//        System.out.println(dfrows.count());
+        LongAccumulator accum = sc.sc().longAccumulator();
         JavaPairRDD<Double, Tuple2<Double, Double>> newpairrdd = dfrows.toJavaRDD().mapToPair(new PairFunction<Row, Double, Tuple2<Double, Double>>() {
             @Override
             public Tuple2<Double, Tuple2<Double, Double>> call(Row row) throws Exception {
-                return new Tuple2<>(new Double(row.getString(1)), new Tuple2<Double, Double>(new Double(row.getString(2)), new Double(row.getString(0))));
+                long count = 1;
+                accum.add(count);
+                return new Tuple2<>(new Double(row.getString(1)), new Tuple2<Double, Double>(new Double(row.getString(0)), new Double(accum.value())));
             }
         });
         JavaRDD<LabeledPoint> data = newpairrdd.map(new Function<Tuple2<Double, Tuple2<Double, Double>>, LabeledPoint>() {
@@ -63,13 +77,26 @@ public class LinRegWB {
                 return new LabeledPoint(doubleTuple2Tuple2._1(), Vectors.dense(doubleTuple2Tuple2._2()._2()));
             }
         });
+//
+//        JavaPairRDD<Double, Tuple2<Double, Double>> newpairrdd = dfrows.toJavaRDD().mapToPair(new PairFunction<Row, Double, Tuple2<Double, Double>>() {
+//            @Override
+//            public Tuple2<Double, Tuple2<Double, Double>> call(Row row) throws Exception {
+//                return new Tuple2<>(new Double(row.getString(1)), new Tuple2<Double, Double>(new Double(row.getString(2)), new Double(row.getString(0))));
+//            }
+//        });
+//        JavaRDD<LabeledPoint> data = newpairrdd.map(new Function<Tuple2<Double, Tuple2<Double, Double>>, LabeledPoint>() {
+//            @Override
+//            public LabeledPoint call(Tuple2<Double, Tuple2<Double, Double>> doubleTuple2Tuple2) throws Exception {
+//                return new LabeledPoint(doubleTuple2Tuple2._1(), Vectors.dense(doubleTuple2Tuple2._2()._2()));
+//            }
+//        });
 
         Dataset<Row> datarow = spark.createDataFrame(data, LabeledPoint.class);
 
         GeneralizedLinearRegression glr = new GeneralizedLinearRegression()
                 .setFamily("gaussian")
                 .setLink("identity")
-                .setMaxIter(10)
+                .setMaxIter(100)
                 .setRegParam(0.3);
 
         // Fit the model
@@ -96,11 +123,50 @@ public class LinRegWB {
 
         System.out.println(glr.explainParams());
 
-        //evaluate
+
+
+
+//        evaluate
 
         GeneralizedLinearRegressionSummary sum = model.evaluate(datarow);
         Dataset<Row> test = sum.predictions();
         test.show();
+        System.out.println("asdkjasdasjaskjdasdkjasdaskjasd:  " + summary.residuals().count());
+        double[] x = new double[(int) summary.residuals().count()];
+        double[] y = new double[(int) summary.residuals().count()];
+
+        List<Row> resi = summary.residuals().collectAsList();
+        for (int i = 0; i < resi.size(); i++) {
+            y[i] = resi.get(i).getDouble(0);
+            x[i] = i;
+        }
+//        resi.foreach(new ForeachFunction<Row>() {
+//            int count = 0;
+//            @Override
+//            public void call(Row row) throws Exception {
+////                System.out.println(row.getDouble(0));
+//                x[count] = row.getDouble(0);
+//                y[count] = (double) count;
+//                count++;
+//            }
+//        });
+//        System.out.println(x.length);
+        System.out.println(y[4573]);
+        // create your PlotPanel (you can use it as a JPanel)
+        Plot2DPanel plot = new Plot2DPanel();
+
+        // add a line plot to the PlotPanel
+        plot.addLinePlot("my plot", x, y);
+
+        // put the PlotPanel in a JFrame, as a JPanel
+        JFrame frame = new JFrame("a plot panel");
+        frame.setSize(600, 600);
+        frame.setContentPane(plot);
+        frame.setVisible(true);
+
+        spark.stop();
+
+
 
 
     }
