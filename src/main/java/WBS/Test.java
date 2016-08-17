@@ -16,6 +16,7 @@ import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.ml.feature.LabeledPoint;
 import org.apache.spark.ml.linalg.Vectors;
 import org.apache.spark.ml.regression.*;
+import org.apache.spark.mllib.regression.LinearRegressionWithSGD;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -51,7 +52,7 @@ public class Test {
                         if (!row.isNullAt(0)) {
                             x = new Double(row.getString(2));
                         }
-                        return !row.isNullAt(0) && x == 44.0;
+                        return !row.isNullAt(0) && x == 36.0;
                     }
                 });
 //        System.out.println(dfrows.count());
@@ -71,7 +72,8 @@ public class Test {
             @Override
             public Boolean call(Tuple2<Double, Tuple2<Double, Double>> doubleTuple2Tuple2) throws Exception {
 //                long i = 100;
-                long x = count - 100;
+//                long x = count - 1000;
+                long x = 0;
                 return doubleTuple2Tuple2._2()._2() >= x;
             }
         });
@@ -84,34 +86,64 @@ public class Test {
 
 //        data.take(20).forEach(System.out::println);
         Dataset<Row> datarow = spark.createDataFrame(data, LabeledPoint.class);
-//        LinearRegression lr = new LinearRegression()
-//                .setMaxIter(1000)
-//                .setRegParam(0.3)
-//                .setElasticNetParam(0.8);
+        System.out.println("Numero de datos: " + datarow.count());
+        datarow.show();
+
+
+        Dataset<Row>[] splits = datarow.randomSplit(new double[]{0.7, 0.3});
+        Dataset<Row> trainingData = splits[0];
+        Dataset<Row> testData = splits[1];
+
+
+  /*      LinearRegression lr = new LinearRegression()
+                .setMaxIter(1000)
+                .setRegParam(0.3)
+                .setElasticNetParam(0.8)
+                .setFitIntercept(true)
+                .setStandardization(true);
+
+//        System.out.println("Columna de peswossosossosososso:  "  +  lr.getWeightCol());
 //
-//// Fit the model.
-//        LinearRegressionModel lrModel = lr.fit(datarow);
-//
-//// Print the coefficients and intercept for linear regression.
-//        System.out.println("Coefficients: "
-//                + lrModel.coefficients() + " Intercept: " + lrModel.intercept());
-//
-//// Summarize the model over the training set and print out some metrics.
-//        LinearRegressionTrainingSummary trainingSummary = lrModel.summary();
-//        System.out.println("numIterations: " + trainingSummary.totalIterations());
-//        System.out.println("objectiveHistory: " + Vectors.dense(trainingSummary.objectiveHistory()));
-//        trainingSummary.residuals().show();
-//        System.out.println("RMSE: " + trainingSummary.rootMeanSquaredError());
-//        System.out.println("r2: " + trainingSummary.r2());
+    // Fit the model.
+        LinearRegressionModel lrModel = lr.fit(trainingData);
+
+    // Print the coefficients and intercept for linear regression.
+        System.out.println("Coefficients: "
+                + lrModel.coefficients() + " Intercept: " + lrModel.intercept());
+
+    // Summarize the model over the training set and print out some metrics.
+        LinearRegressionTrainingSummary trainingSummary = lrModel.summary();
+        System.out.println("numIterations: " + trainingSummary.totalIterations());
+        System.out.println("objectiveHistory: " + Vectors.dense(trainingSummary.objectiveHistory()));
+        trainingSummary.residuals().show();
+        System.out.println("RMSE: " + trainingSummary.rootMeanSquaredError());
+        System.out.println("r2: " + trainingSummary.r2());
+
+        //Predictions
+
+        LinearRegressionSummary modelSummary = lrModel.evaluate(testData);
+        System.out.println("T-Values: " + modelSummary.tValues());
+//        System.out.println("P-Values: " + Vectors.dense(modelSummary.pValues()));
+        System.out.println("Residuos:  ");
+        modelSummary.residuals().show();
+        System.out.println("RMSE: " + modelSummary.rootMeanSquaredError());
+        System.out.println("r2: " + modelSummary.r2());
+        System.out.println("Predicciones: ");
+        modelSummary.predictions().show();
+        System.out.println("Numero de predicciones: " + modelSummary.predictions().count());;
+*/
+
+
+
+
         GeneralizedLinearRegression glr = new GeneralizedLinearRegression()
                 .setFamily("gaussian")
                 .setLink("identity")
                 .setMaxIter(100)
-                .setRegParam(0.3);
+                .setRegParam(0);
 
         // Fit the model
-        GeneralizedLinearRegressionModel model = glr.fit(datarow);
-
+        GeneralizedLinearRegressionModel model = glr.fit(trainingData);
         // Print the coefficients and intercept for generalized linear regression model
         System.out.println("Coefficients: " + model.coefficients());
         System.out.println("Intercept: " + model.intercept());
@@ -130,5 +162,22 @@ public class Test {
         System.out.println("AIC: " + summary.aic());
         System.out.println("Deviance Residuals: ");
         summary.residuals().show();
+
+        Dataset<Row> results =  model.transform(testData);
+        Dataset<Row> rows = results.select("features", "label", "prediction");
+        for (Row r: rows.collectAsList()) {
+            System.out.println("(" + r.get(0) + ", " + r.get(1) + "), prediction=" + r.get(2));
+        }
+
+       /* //([375.0], 0.551), prediction=0.2962022472445679
+        ([377.0], 0.254), prediction=0.2962947889191027
+        ([378.0], 0.416), prediction=0.29634105975637015*/
+
+
+        /*60-40
+        * ([371.0], 0.179), prediction=0.29018383827825733
+([373.0], 0.171), prediction=0.29029305237162706
+([376.0], 0.402), prediction=0.29045687351168165*/
+
     }
 }
