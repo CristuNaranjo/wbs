@@ -158,6 +158,7 @@
     <orderEntry type="library" name="Maven: org.spire-math:spire-macros_2.10:0.7.4" level="project" />
     <orderEntry type="library" name="Maven: org.jpmml:pmml-model:1.2.15" level="project" />
     <orderEntry type="library" name="Maven: org.jpmml:pmml-schema:1.2.15" level="project" />
+    <orderEntry type="library" name="Maven: mysql:mysql-connector-java:5.1.29" level="project" />
     <orderEntry type="library" name="Maven: com.github.yannrichet:JMathPlot:1.0.1" level="project" />
     <orderEntry type="library" name="Maven: com.github.yannrichet:JMathIO:1.0" level="project" />
     <orderEntry type="library" name="Maven: com.github.yannrichet:JMathArray:1.0" level="project" />
