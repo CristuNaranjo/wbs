@@ -26,7 +26,7 @@ import scala.Tuple2;
 
 import java.util.*;
 
-import static org.apache.spark.sql.types.DataTypes.*;
+    import static org.apache.spark.sql.types.DataTypes.*;
 
 /**
  * Created by cristu on 17/08/16.
